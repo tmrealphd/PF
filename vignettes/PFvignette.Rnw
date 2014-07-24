@@ -1,0 +1,258 @@
+%\VignetteIndexEntry{PFVignette}
+\documentclass[12pt]{article}
+\title{PF Package Vignette}
+\author{David Siev, Christopher H. Tong}
+\date{January 4, 2012}
+
+% necessary for asa.bst
+\usepackage{natbib}
+% \bibpunct{(}{)}{;}{a}{,}{,}  
+\setcitestyle{round,aysep={},citesep={;}}
+
+\usepackage{parskip}
+%% \setlength{\parindent}{0pt}
+%% \setlength{\parskip}{1ex plus 0.5ex minus 0.2ex}
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1.0in}
+\addtolength{\topmargin}{-0.5in}
+\addtolength{\textheight}{1.0in}
+\pagestyle{headings}
+
+\SweaveOpts{keep.source=TRUE}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+The \texttt{PF} package is a collection of functions related to estimating prevented fraction, $PF=1-RR$ , 
+where $RR={{{\pi}_{2}}}/{{{\pi}_{1}}}\;$ . 
+
+\subsubsection*{Technical notes}
+\emph{Optimization}. Unless otherwise stated, optimization is by the DUD algorithm \citep{RJ78}.
+
+\emph{Level tested}. The help files indicate the level of testing undergone by each function. In some cases that is a subjective judgement, since most of these functions were originally tested in SPlus and have been ported to R more recently.
+
+\section{Score based methods}
+\subsection{The score statistic}
+Confidence intervals for the risk ratio may be based on the score statistic  \citep{Koop84, MN85},
+\[\frac{{{{\hat{\pi }}}_{2}}-{{\rho }_{0}}{{{\hat{\pi }}}_{1}}}{\sqrt{\left( {{{{\tilde{\pi }}}_{2}}(1-{{{\tilde{\pi }}}_{2}})}/{{{n}_{2}}}\; \right)+\rho _{0}^{2}\left( {{{{\tilde{\pi }}}_{1}}(1-{{{\tilde{\pi }}}_{1}})}/{{{n}_{1}}}\; \right)}}\]
+where hat indicates the MLE and tilde indicates the MLE under the restriction that $\rho ={{\rho }_{0}}$.
+
+\subsection{Asymptotic intervals}
+\texttt{RRsc()} estimates asymptotic confidence intervals for the risk ratio or prevented fraction based on the score statistic. 
+Interval estimates are returned for three estimators. The score method was originally introduced by \citet{Koop84}. Gart and Nam's modification includes a skewness correction \citep{GN88}. The method of \citet{MN85} is a version made slightly more conservative than Koopman's by including a factor of ${(N-1)}/{N}\;$. 
+\pagebreak
+
+<<>>= 
+require(PF)
+RRsc(c(4,24,12,28))
+@
+
+\bigskip
+Starting estimates for the algorithm are obtained by the modified Katz method (log method with 0.5 added to each cell). 
+Both forms of the Katz estimate may be retrieved from the returned object using \texttt{RRsc()\$estimate}.
+
+\subsection{Exact intervals}
+
+These methods give intervals that are `exact' in the sense that they are based on the actual sampling distribution rather than an approximation to it. 
+The score statistic is used to select the $2 \times 2$ tables that would fall in the tail area, and the binomial probability is 
+estimated over the tail area by taking the maximum over the nuisance parameter. The search over the tail area is made more efficient 
+by the Berger-Boos correction \citep{BB94}. 
+
+\texttt{RRtosst()} gives intervals obtained by inverting two one-sided score tests; \texttt{RRotsst()} gives intervals obtained by inverting one two-sided score test. \texttt{RRtosst()} is thus more conservative, preserving at least ${\alpha }/{2}\;$ in each tail. \citet{AM01} discuss the properties and relative benefits of the two approaches. The price of exactnesss is conservatism, due to the discreteness of the binomial distribution \citep{AA01}. This means that the actual coverage of the confidence interval does not exactly conform to the nominal coverage, but it will not be less than it. (See also \citet{AA03}.) Both functions use a simple step search algorithm. 
+
+<<>>= 
+RRotsst(c(4,24,12,28))
+RRtosst(c(4,24,12,28))
+@
+
+\section{Stratified designs}
+Methods for estimating a common \emph{RR} from stratified or clustered designs depend on homogeneity with respect to the common parameter.
+
+\subsection{Gart-Nam score method \label{sec:gart}}
+\citet{Gart85} and \citet{GN88} derived a score statistic for a common estimate of \emph{RR} from designs with multiple independent strata, and they showed that it is identical to one proposed by \citet{Rad65} from a different perspective.
+
+\texttt{RRstr()} provides confidence intervals and a homogeneity test based on Gart's statistic.
+
+Data may be input two ways, either using a formula and data frame, or as a matrix.
+
+<<>>= 
+RRstr(cbind(y,n) ~ tx + cluster(clus), Table6 , pf = F)
+# Data matrix input:
+# RRstr(Y = table6, pf = F)
+@
+
+\subsection{Mantel-Haenszel estimator}
+
+A widely-used heuristic method for sparse frequency tables is the weighted average approach of \citet{MH59}.\footnote{\citet{KLK88} review the Mantel-Haenzel approach and point out its relationship to a method proposed by \citet{Coc54}, which was the basis of Rhadakrishnan's method \citep{Rad65}, alluded to in section~\ref{sec:gart}.}
+MH interval estimates are based on the asymptotic normality of the log of the risk ratio. 
+\texttt{RRmh()} utilizes the variance estimator given by \citet{GR85} for sparse strata.
+The resulting asymptotic estimator is consistent for both the case of sparse strata where the number of strata is assumed increasing, 
+and the case of limited number of strata where the stratum size is assumed increasing. In the latter case, however, it is less 
+efficient than maximum likelihood \citep{AH00, GR85}. 
+Additional discussion may be found in \citet[Section 4.3.1]{Lachin00}, \citet{LSKK05}, and \citet{SO06}.
+\footnote{SAS Proc FREQ provides MH interval estimates of \emph{RR}. The other estimator calculated by Proc FREQ, which it calls
+``logit,'' is actually a weighted least squares estimator \citep{Lachin00} that has a demonstrable and severe
+bias for sparse data \citep{GR85}.  It should be avoided.}
+
+<<>>= 
+RRmh(cbind(y,n) ~ tx + cluster(clus), Table6 , pf = F)
+# Data matrix input:
+# RRmh(Y = table6, pf = F)
+@
+
+\subsection{Examples}
+For a fuller set of examples, see the vignette \emph{Examples for Stratified Designs}.
+
+\section{Model based intervals}
+\subsection{Logistic regression estimates}
+Intervals may be estimated from logistic regression models with \texttt{RRor()}. It takes the fit of a \texttt{glm()} object and estimates the intervals by the delta method.
+
+<<>>= 
+bird.fit <- glm(cbind(y,n-y) ~ tx - 1, binomial, bird)
+RRor(bird.fit)
+@
+
+\subsection{Estimating the dispersion parameter}
+
+The binomial GLM weights are
+\[\frac{\hat{\pi }(1-\hat{\pi })}{a(\hat{\varphi })/n\;}\]
+where $a(\hat{\varphi })$ is a function of the dispersion parameter.
+
+\subsubsection{Dispersion parameter $\varphi$}
+
+A simple estimator of the dispersion parameter, $\varphi$, may be estimated by the method of moments \citep{Wed74}. It is given by \texttt{phiWt()}. 
+This form of the dispersion parameter has $a(\varphi)=\varphi$, and $\varphi$ is estimated by ${X^2}/{df}\;$, the Pearson statistic divided by the degrees of freedom.
+
+Note that $\varphi$ is the same estimator as may be obtained by the \texttt{quasibinomial} family in \texttt{glm()} which is, in fact, what is used by \texttt{phiWt()} to reweight the original fit:
+
+<<>>= 
+phiWt(bird.fit, fit.only = F)$phi
+summary(update(bird.fit, family = quasibinomial))$disp
+@
+
+\bigskip
+\texttt{phiWt()} makes it easy to estimate \emph{PF} intervals with a single command.
+\bigskip
+
+<<>>= 
+# model weighted by phi hat
+RRor(phiWt(bird.fit))
+@
+
+\bigskip
+It also allows different estimates of ${\hat{\varphi}}$ for specified subsets of the data.
+\bigskip
+
+<<>>= 
+# model with separate phi for vaccinates and controls
+RRor(phiWt(bird.fit, subset.factor = bird$tx))
+@
+
+\bigskip
+If you want to subtract a degree of freedom for each additional parameter, you can do that by entering the degrees of freedom as an argument to \texttt{RRor()}.
+\bigskip
+
+<<>>= 
+# subtract 2 degrees of freedom
+RRor(phiWt(bird.fit, subset.factor = bird$tx), degf = 2)
+@
+
+\subsubsection{Dispersion parameter $\tau$}
+
+When overdispersion is due to intra-cluster correlation, it may make sense to estimate the dispersion as a function of the intra-cluster correlation parameter $\tau$. In other words, ${a({\varphi }_{ij})}=1+{{\tau }_{j}}({{n}_{ij}}-1)$. \texttt{tauWt()} does this using the Williams procedure \citep{Wil82}.
+\bigskip
+
+<<>>= 
+# model weighted using tau hat
+RRor(tauWt(bird.fit, subset.factor = bird$tx))
+@
+
+\bigskip
+In this example the \texttt{tauWt()} estimates are the same as the \texttt{phiWt()} estimates. That is because the cluster sizes are all the same. Let's see what happens if we modify the \texttt{bird} data set. The \texttt{birdm} data set has the same cluster fractions but differing cluster sizes.
+\bigskip
+
+<<>>= 
+# different cluster sizes, same cluster fractions
+birdm.fit <- glm(cbind(y,n-y) ~ tx - 1, binomial, birdm)
+RRor(tauWt(birdm.fit, subset.factor = birdm$tx))
+@
+
+\bigskip
+Note that increasing cluster size can make things worse when there is intra-cluster correlation. 
+
+\bigskip
+Now let's compare the weights from \texttt{phiWt()} and \texttt{tauWt()} with unequal cluster sizes.
+In the output below, \emph{w} represents $1/a(\hat{\varphi })\;$ and \emph{nw} is $n/a(\hat{\varphi })\;$
+\bigskip
+
+<<>>= 
+# Compare phi and tau weights
+#  
+phi.wts <-phiWt(birdm.fit,fit.only = F, subset.factor = birdm$tx)$weights
+tau.wts <- tauWt(birdm.fit,fit.only = F, subset.factor = birdm$tx)$weights
+w <- cbind(w.phi=phi.wts,w.tau=tau.wts,nw.phi=phi.wts*birdm$n,
+		nw.tau=tau.wts*birdm$n)
+print(cbind(birdm[,c(3,1,2)],round(w, 2)), row.names=F)
+@
+
+\bigskip
+Look at the last two rows. Note that the \texttt{nw.phi} are directly proportional to \emph{n} within treatment group, while the \texttt{nw.tau} are not. With intra-cluster correlation, increasing cluster size does not give a corresponding increase in information.
+\bigskip
+
+\subsection{Rao-Scott weights}
+\citet{RS92} give a method of weighting clustered binomial observations based on the variance inflation due to clustering.
+They relate their approach to the concepts of design effect and effective sample size familiar in survey sampling, and they illustrate its use in a variety of contexts. 
+\texttt{rsbWt()} implements it in the same manner as \texttt{phiWt()} and \texttt{tauWt()}. For more general use, the function \texttt{rsb()} just returns the design effect estimates and the weights.
+
+<<>>= 
+# model weighted with Rao-Scott weights
+RRor(rsbWt(birdm.fit, subset.factor = birdm$tx))
+# just the design effect estimates
+rsb(birdm$y, birdm$n, birdm$tx)$d
+@
+
+\section{Likelihood based intervals}
+
+The \texttt{RRlsi()} function estimates likelihood support intervals for \emph{RR} by the profile likelihood \citep[Section 7.6]{Roy97}.  
+
+Likelihood support intervals are usually formed based on the desired likelihood ratio, ${1}/{k}\;$, often ${1}/{8}\;$ or ${1}/{32}\;$. Under some conditions the log likelihood ratio may follow the chi-square distribution. If so, then $\alpha =1-{{F}_{{{\chi }^{2}}}}\left( 2\log (k),1 \right)$. \texttt{RRsc()} will make the conversion from $\alpha$ to \emph{k} with the argument \texttt{use.alpha = T}.
+
+\bigskip
+
+<<>>= 
+RRlsi(c(4,24,12,28))
+RRlsi(c(4,24,12,28), use.alpha = T)
+@
+
+\section{Incidence ratio}
+The incidence is the number of cases per subject-time. Its distribution is assumed Poisson. Under certain designs, the incidence ratio (\emph{IR}) is used as a measure of treatment effect. Correspondingly, ${{PF}_{IR}}=1-IR$ would be used as a measure of effect for an intervention that is preventive, such as vaccination. \emph{IR} is also called incidence density ratio (\emph{IDR}), and that is  the term used in the following functions.
+
+\subsection{Score method}
+
+\texttt{IDRsc()} estimates a confidence interval for the incidence density ratio using Siev's formula \citep[Appendix 1]{Siev94} based on the Poisson score statistic.\footnote{This formula was published in a Japanese journal \citep{Sato88} several years before Siev. See also \citet{GMM03} and \citet{Siev04}.}
+\[IDR=\widehat{IDR}\left\{ 1+\left( \frac{1}{{{y}_{1}}}+\frac{1}{{{y}_{2}}} \right)\frac{z_{\alpha /2}^{2}}{2}\ \ \pm \ \ \frac{z_{\alpha /2}^{2}}{2{{y}_{1}}{{y}_{2}}}\sqrt{{{y}_{\bullet }}\left( {{y}_{\bullet }}z_{\alpha /2}^{2}+4{{y}_{1}}{{y}_{2}} \right)} \right\}\]
+
+\bigskip
+<<>>= 
+IDRsc(c(26,204,10,205), pf = F)
+@
+
+\subsection{Likelihood method}
+A likelihood support interval for \emph{IDR} may be estimated based on orthogonal factoring of the reparameterized likelihood. \citep[Section 7.2]{Roy97} \texttt{IDRlsi()} implements this method.
+
+Likelihood support intervals are usually formed based on the desired likelihood ratio, ${1}/{k}\;$, often ${1}/{8}\;$ or ${1}/{32}\;$. Under some conditions the log likelihood ratio may follow the chi square distribution. If so, then $\alpha =1-{{F}_{{{\chi }^{2}}}}\left( 2\log (k),1 \right)$. \texttt{IDRlsi()} will make the conversion from $\alpha$ tp \emph{k} with the argument \texttt{use.alpha = T}.
+
+\bigskip
+ 
+<<>>= 
+IDRlsi(c(26,204,10,205), pf = F)
+IDRlsi(c(26,204,10,205), pf = F, use.alpha = T)
+@
+
+\bibliographystyle{asa}
+\bibliography{PF}
+\end{document}
+
