@@ -5,8 +5,8 @@
 #' \tabular{ll}{
 #' Package: \tab pf-package\cr
 #' Type: \tab Package\cr
-#' Version: \tab 9.5\cr
-#' Date: \tab 2013-08-29\cr
+#' Version: \tab 9.5.1\cr
+#' Date: \tab 2015-03-31\cr
 #' License: \tab MIT\cr
 #' LazyLoad: \tab yes\cr
 #' LazyData: \tab yes\cr
