@@ -1,8 +1,8 @@
 Package: PF
 Type: Package
 Title: Prevented fraction.
-Version: 9.5
-Date: 2013-08-28
+Version: 9.5.1
+Date: 2015-03-31
 Author: Dave Siev
 Maintainer: Marie Vendettuoli <marie.c.vendettuoli@aphis.usda.gov>
 Description: Functions related to PF (prevented fraction). Calculate incidence density ratio, confidence interval, and Rao-Scott weights of PF by multiple methods. See http://goo.gl/eJ6Rxi for definition of PF.
